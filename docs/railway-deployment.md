@@ -21,10 +21,11 @@ DB_URL=jdbc:mysql://${{MySQL.MYSQLHOST}}:${{MySQL.MYSQLPORT}}/${{MySQL.MYSQLDATA
 DB_USERNAME=${{MySQL.MYSQLUSER}}
 DB_PASSWORD=${{MySQL.MYSQLPASSWORD}}
 SESSION_COOKIE_SECURE=true
-STAFF_INVITE_CODE=<generate-a-long-random-secret>
 ```
 
-Railway supplies `PORT` automatically. Do not set `DB_PASSWORD` or `STAFF_INVITE_CODE` in GitHub or commit them to the repository. Generate a unique invite code, provide it only to the first administrator, and rotate/remove the bootstrap code after the first account is created.
+Railway supplies `PORT` automatically. Do not set `DB_PASSWORD` in GitHub or commit it to the repository. `STAFF_INVITE_CODE` is optional because registration is open; leave it unset unless you specifically want a bootstrap code for the first account.
+
+Login sessions are stored in the MySQL database with Spring Session JDBC, so they remain consistent across backend instances and restarts. The backend initializes the Spring Session tables on startup.
 
 ## Frontend variables and public URL
 
