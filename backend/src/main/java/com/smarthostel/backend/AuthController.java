@@ -61,6 +61,7 @@ public class AuthController {
       promoteBootstrapAdministrator();
       Authentication authentication = authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(body.username().trim(), body.password()));
       HttpSession session=prepareSession(request);
+      pinSessionToAccount(session, authentication.getName());
       SecurityContext context = SecurityContextHolder.createEmptyContext();
       context.setAuthentication(authentication);
       SecurityContextHolder.setContext(context);
@@ -104,6 +105,7 @@ public class AuthController {
   private Map<String, String> establishSession(String username, String password, HttpServletRequest request, HttpServletResponse response) {
     Authentication authentication = authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(username, password));
     HttpSession session=prepareSession(request);
+    pinSessionToAccount(session, authentication.getName());
     SecurityContext context = SecurityContextHolder.createEmptyContext();
     context.setAuthentication(authentication);
     SecurityContextHolder.setContext(context);
@@ -118,6 +120,12 @@ public class AuthController {
     return request.getSession(true);
   }
 
+  private void pinSessionToAccount(HttpSession session, String username) {
+    UserAccount account=accounts.findByUsernameIgnoreCase(username).orElseThrow();
+    session.setAttribute(SessionFreshnessFilter.PASSWORD_FINGERPRINT,
+        SessionFreshnessFilter.fingerprint(account.getPasswordHash()));
+  }
+
   @GetMapping("/me") public Map<String, String> me(Authentication authentication) {
     return accountSummary(authentication.getName());
   }
@@ -129,7 +137,7 @@ public class AuthController {
     if(!passwordEncoder.matches(body.currentPassword(),account.getPasswordHash())) throw new ResponseStatusException(HttpStatus.UNAUTHORIZED,"Current password is incorrect");
     account.setPasswordHash(passwordEncoder.encode(body.newPassword())); account.setMustChangePassword(false); accounts.save(account);
     Authentication updated=authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(account.getUsername(),body.newPassword()));
-    HttpSession session=prepareSession(request);SecurityContext context=SecurityContextHolder.createEmptyContext();context.setAuthentication(updated);SecurityContextHolder.setContext(context);session.setAttribute(HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY,context);contextRepository.saveContext(context,request,response);
+    HttpSession session=prepareSession(request);pinSessionToAccount(session, account.getUsername());SecurityContext context=SecurityContextHolder.createEmptyContext();context.setAuthentication(updated);SecurityContextHolder.setContext(context);session.setAttribute(HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY,context);contextRepository.saveContext(context,request,response);
     audit.record("PASSWORD_CHANGED","STAFF",account.getUsername()); return Map.of("message","Password updated");
   }
 

@@ -5,6 +5,8 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -12,6 +14,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 /** Invalidates sessions immediately after a password or role change. */
 public class SessionFreshnessFilter extends OncePerRequestFilter {
+  public static final String PASSWORD_FINGERPRINT = "AUTH_PASSWORD_FINGERPRINT";
   private final UserAccountRepository accounts;
   public SessionFreshnessFilter(UserAccountRepository accounts){this.accounts=accounts;}
   @Override protected void doFilterInternal(HttpServletRequest request,HttpServletResponse response,FilterChain chain) throws ServletException,IOException {
@@ -19,7 +22,10 @@ public class SessionFreshnessFilter extends OncePerRequestFilter {
     if(auth!=null&&auth.isAuthenticated()&&auth.getPrincipal() instanceof UserDetails principal){
       UserAccount current=accounts.findByUsernameIgnoreCase(auth.getName()).orElse(null);
       boolean missingAccount=current==null;
-      boolean passwordChanged=!missingAccount&&!current.getPasswordHash().equals(principal.getPassword());
+      jakarta.servlet.http.HttpSession session=request.getSession(false);
+      String storedFingerprint=session==null?null:(String)session.getAttribute(PASSWORD_FINGERPRINT);
+      boolean passwordChanged=!missingAccount&&(storedFingerprint==null||!MessageDigest.isEqual(
+          storedFingerprint.getBytes(StandardCharsets.US_ASCII),fingerprint(current.getPasswordHash()).getBytes(StandardCharsets.US_ASCII)));
       boolean roleChanged=!missingAccount&&!auth.getAuthorities().stream().anyMatch(a->a.getAuthority().equals("ROLE_"+current.getRole()));
       if(missingAccount||passwordChanged||roleChanged){
         SecurityContextHolder.clearContext();if(request.getSession(false)!=null)request.getSession(false).invalidate();response.sendError(HttpServletResponse.SC_UNAUTHORIZED,"Session expired; sign in again");return;
@@ -29,5 +35,10 @@ public class SessionFreshnessFilter extends OncePerRequestFilter {
       if(current.isMustChangePassword()&&!passwordFlow){response.setStatus(428);response.setContentType("application/problem+json");response.getWriter().write("{\"detail\":\"Change your temporary password to continue\"}");return;}
     }
     chain.doFilter(request,response);
+  }
+
+  public static String fingerprint(String passwordHash){
+    try{return java.util.HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(passwordHash.getBytes(StandardCharsets.UTF_8)));}
+    catch(java.security.NoSuchAlgorithmException e){throw new IllegalStateException(e);}
   }
 }
