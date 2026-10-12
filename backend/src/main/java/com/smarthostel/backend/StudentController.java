@@ -19,6 +19,7 @@ public class StudentController {
   private final AuditService audit;
   private final StaffInviteRepository invites;
   private final SecureRandom random=new SecureRandom();
+  @org.springframework.beans.factory.annotation.Autowired
   public StudentController(StudentRepository repo, RoomRepository rooms,AuditService audit,StaffInviteRepository invites){this.repo=repo;this.rooms=rooms;this.audit=audit;this.invites=invites;}
   public StudentController(StudentRepository repo, RoomRepository rooms,AuditService audit){this(repo,rooms,audit,null);}
   @GetMapping public List<Student> all(){return repo.findAll();}
