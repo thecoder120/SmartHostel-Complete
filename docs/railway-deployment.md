@@ -41,6 +41,6 @@ The frontend Nginx configuration reads `BACKEND_ORIGIN` at container startup. It
 
 ## Verify the deployment
 
-Wait for MySQL and the backend to become healthy, then open the frontend's HTTPS URL. Staff registration is open: the first account becomes the administrator, and later accounts are staff by default. Anyone who can reach the public site can register and access hostel records. Administrators can still issue optional, single-use staff invites from the app. Confirm sign-out and sign-in work before entering real resident information.
+Wait for MySQL and the backend to become healthy, then open the frontend's HTTPS URL. Staff registration is open: the first account becomes the administrator, and later accounts are staff by default. Staff and administrators can manage hostel records. Student accounts require a one-time signup code created by staff for an existing resident record; student sessions can read only their own profile and room assignment. Confirm sign-out and sign-in work before entering real resident information.
 
 Railway is usage based. Review the current plan, usage, and spending controls in Railway before deploying; enable a spending limit if one is available on your plan. Back up the database regularly and treat backups as sensitive resident data.

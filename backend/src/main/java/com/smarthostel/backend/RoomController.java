@@ -6,6 +6,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 import java.util.List;
 @RestController @RequestMapping("/api/rooms")
+@org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('ADMIN','STAFF')")
 public class RoomController {
   private final RoomRepository repo;
   private final StudentRepository students;

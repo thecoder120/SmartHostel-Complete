@@ -21,7 +21,7 @@ public class AdminController {
   public AdminController(UserAccountRepository accounts,StaffInviteRepository invites,AuditEventRepository auditEvents,PasswordEncoder passwords,AuditService audit){
     this.accounts=accounts;this.invites=invites;this.auditEvents=auditEvents;this.passwords=passwords;this.audit=audit;
   }
-  @GetMapping("/staff") public List<Map<String,Object>> staff(){return accounts.findAll().stream().map(a->Map.<String,Object>of(
+  @GetMapping("/staff") public List<Map<String,Object>> staff(){return accounts.findAll().stream().filter(a->!"STUDENT".equals(a.getRole())).map(a->Map.<String,Object>of(
       "id",a.getId(),"username",a.getUsername(),"email",a.getEmail(),"role",a.getRole(),"createdAt",a.getCreatedAt(),"mustChangePassword",a.isMustChangePassword())).toList();}
   @PostMapping("/invites") @Transactional public Map<String,String> createInvite(){
     byte[] secret=new byte[24];random.nextBytes(secret);String code=Base64.getUrlEncoder().withoutPadding().encodeToString(secret);
@@ -32,6 +32,7 @@ public class AdminController {
   @PutMapping("/staff/{id}/role") @Transactional public Map<String,String> changeRole(@PathVariable Long id,@RequestBody RoleChange change){
     if(!List.of("ADMIN","STAFF").contains(change.role())) throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Role must be ADMIN or STAFF");
     UserAccount target=accounts.findById(id).orElseThrow(()->new ResponseStatusException(HttpStatus.NOT_FOUND,"Staff account not found"));
+    if("STUDENT".equals(target.getRole())) throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Student account roles are managed through resident registration");
     if("ADMIN".equals(target.getRole())&&"STAFF".equals(change.role())&&accounts.findAll().stream().filter(a->"ADMIN".equals(a.getRole())).count()<2)
       throw new ResponseStatusException(HttpStatus.CONFLICT,"At least one administrator must remain");
     target.setRole(change.role());accounts.save(target);audit.record("ROLE_CHANGED","STAFF",target.getUsername());return Map.of("role",target.getRole());

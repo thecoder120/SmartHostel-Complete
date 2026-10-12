@@ -5,4 +5,5 @@ public interface StudentRepository extends JpaRepository<Student, Long> {
   boolean existsByEmailIgnoreCaseAndIdNot(String email, Long id);
   boolean existsByRoomNumberIgnoreCase(String roomNumber);
   java.util.List<Student> findAllByRoomNumberIgnoreCase(String roomNumber);
+  java.util.Optional<Student> findByEmailIgnoreCase(String email);
 }

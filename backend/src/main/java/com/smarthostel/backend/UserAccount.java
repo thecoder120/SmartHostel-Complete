@@ -14,6 +14,7 @@ public class UserAccount {
   @Column(nullable = false, length = 254) private String email;
   @Column(nullable = false, length = 100) private String passwordHash;
   @Column(nullable = false, length = 20) private String role = "STAFF";
+  @Column(name = "student_id", unique = true) private Long studentId;
   @Column(nullable = false, updatable = false) private Instant createdAt = Instant.now();
   @Column(nullable = false) private boolean mustChangePassword;
 
@@ -29,8 +30,10 @@ public class UserAccount {
   public String getEmail() { return email; }
   public String getPasswordHash() { return passwordHash; }
   public String getRole() { return role; }
+  public Long getStudentId() { return studentId; }
   public Instant getCreatedAt() { return createdAt; }
   public void setRole(String role) { this.role=role; }
+  public void setStudentId(Long studentId) { this.studentId=studentId; }
   public boolean isMustChangePassword() { return mustChangePassword; }
   public void setMustChangePassword(boolean value) { mustChangePassword=value; }
   public void setPasswordHash(String value) { passwordHash=value; }

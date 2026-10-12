@@ -96,7 +96,24 @@ footer{padding:13px 0;color:#a0a8b5;font-size:10px}footer span{float:right}
 .audit-row time{color:#8b96a8;font-size:10px;white-space:nowrap}
 .password-modal .inline-note{margin:-6px 0 18px;padding:10px 12px;background:#fff7e8;color:#95611c;border-radius:8px;font-size:12px}
 .action:focus-visible,.secondary:focus-visible,.primary:focus-visible,.refresh:focus-visible,.nav:focus-visible{outline:3px solid #7772e455;outline-offset:2px}
+.login-card .field select{width:100%;height:47px;border:1px solid #dfe5ee;background:#fff;border-radius:9px;padding:0 13px;color:#202b42}
+.student-stats{grid-template-columns:repeat(3,minmax(0,1fr))}
+.student-status{font-size:21px!important}
+.student-date{font-size:17px!important;letter-spacing:-.3px!important}
+.student-panels{align-items:stretch}
+.student-detail{display:flex;align-items:center;gap:12px;padding:15px 0;border-bottom:1px solid #f0f2f6;color:#625dd8}
+.student-detail:last-child{border-bottom:0}
+.student-detail span{display:grid;gap:3px;min-width:0}
+.student-detail small{font-size:10px;color:#929bad}
+.student-detail b{font-size:12px;color:#293650;overflow-wrap:anywhere}
+.student-room{display:flex;align-items:center;gap:12px;margin:24px 0 16px;padding:15px;border-radius:10px;background:#f5f7fc;color:#5e5ad8}
+.student-room>div{display:grid;gap:3px}
+.student-room b{font-size:14px;color:#27344b}
+.student-room small{font-size:11px;color:#8490a5}
+.student-rent{display:flex;justify-content:space-between;gap:12px;padding:13px 0;border-top:1px solid #f0f2f6;font-size:11px;color:#78859a}
+.student-rent b{color:#293650}
 @media(max-width:900px){header{padding-inline:18px}.content{padding-inline:18px}.header-actions{gap:6px}.header-actions .refresh{padding:8px}}
 @media(max-width:720px){header{gap:8px}.header-actions{margin-left:auto;justify-content:flex-end}.header-actions .signed-in{display:none}.header-actions .refresh{font-size:0;gap:0;padding:9px}.header-actions .refresh svg{width:17px;height:17px}.nav{overflow:hidden}.nav span{display:none}.team-panel .toolbar{flex-direction:row;align-items:center;padding:15px}.team-panel .toolbar .primary{font-size:10px;padding:9px}.secret-box{margin:12px}.secret-box label>span{flex-wrap:wrap}.secret-box input{flex-basis:100%}.audit-list{padding-inline:13px}.audit-row{align-items:flex-start;flex-wrap:wrap}.audit-row time{margin-left:44px}.tablepanel table{min-width:730px}.tablepanel:has(th:first-child) .scroll{overscroll-behavior-x:contain}}
+@media(max-width:720px){.student-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.student-panels{grid-template-columns:1fr}}
 @media(max-width:420px){.header-actions{gap:4px}.header-actions .refresh{padding:8px}.stats{grid-template-columns:repeat(2,minmax(0,1fr))}.stat{min-width:0}.stat>span{font-size:10px}.roomline{grid-template-columns:60px 1fr;row-gap:6px}.roomline em{grid-column:2}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
