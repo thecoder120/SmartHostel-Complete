@@ -17,6 +17,7 @@ public class Student {
   @Column private LocalDate admittedAt = LocalDate.now();
   @Column private LocalDate checkedInAt;
   @Column private LocalDate checkedOutAt;
+  @Transient private boolean accountLinked;
   public Student() {}
   public Long getId(){return id;} public void setId(Long id){this.id=id;}
   public String getName(){return name;} public void setName(String v){name=trim(v);}
@@ -32,5 +33,7 @@ public class Student {
   public void setCheckedInAt(LocalDate value){checkedInAt=value;}
   public LocalDate getCheckedOutAt(){return checkedOutAt;}
   public void setCheckedOutAt(LocalDate value){checkedOutAt=value;}
+  public boolean isAccountLinked(){return accountLinked;}
+  public void setAccountLinked(boolean value){accountLinked=value;}
   private static String trim(String value){return value==null?null:value.trim();}
 }

@@ -52,7 +52,7 @@ public class AuthController {
   @GetMapping("/csrf") public Map<String, String> csrf(CsrfToken token) { return Map.of("token", token.getToken()); }
 
   @GetMapping("/config") public Map<String, Boolean> config() {
-    return Map.of("inviteRequired", accounts.count()==0&&!staffInviteCode.isBlank(), "registrationOpen", true);
+    return Map.of("inviteRequired", accounts.count()==0, "registrationOpen", true);
   }
 
   @PostMapping("/login")
@@ -159,8 +159,7 @@ public class AuthController {
 
   private StaffInvite validateInvite(String submitted){
     if(accounts.count()==0){
-      if(staffInviteCode.isBlank()) return null;
-      if(staffInviteCode.length()<16) throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,"Staff registration is not configured securely");
+      if(staffInviteCode.isBlank()||staffInviteCode.length()<16) throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,"Administrator setup is not configured securely");
       if(submitted!=null&&MessageDigest.isEqual(staffInviteCode.getBytes(StandardCharsets.UTF_8),submitted.getBytes(StandardCharsets.UTF_8))) return null;
       throw new ResponseStatusException(HttpStatus.FORBIDDEN,"Enter the administrator setup invite code");
     }

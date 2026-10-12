@@ -41,6 +41,34 @@ class HostelWorkflowTests {
     assertEquals(2,result.getOccupiedBeds());assertEquals(1,result.getAvailableBeds());assertTrue(result.isAvailable());
   }
 
+  @Test void studentListShowsWhetherResidentAccountIsLinked(){
+    StudentRepository students=mock(StudentRepository.class);UserAccountRepository accounts=mock(UserAccountRepository.class);
+    StudentController controller=new StudentController(students,mock(RoomRepository.class),mock(AuditService.class),mock(StaffInviteRepository.class),accounts);
+    Student resident=student(12L,"Resident");when(students.findAll()).thenReturn(List.of(resident));when(accounts.existsByStudentId(12L)).thenReturn(true);
+    assertTrue(controller.all().getFirst().isAccountLinked());
+  }
+
+  @Test void linkingStudentAccountRequiresMatchingEmailAndOnlyLinksOnce(){
+    StudentRepository students=mock(StudentRepository.class);UserAccountRepository accounts=mock(UserAccountRepository.class);
+    StudentController controller=new StudentController(students,mock(RoomRepository.class),mock(AuditService.class),mock(StaffInviteRepository.class),accounts);
+    Student resident=student(14L,"Resident");UserAccount account=new UserAccount("resident1",resident.getEmail(),"hash","STUDENT");
+    when(students.findById(14L)).thenReturn(Optional.of(resident));when(accounts.findByUsernameIgnoreCase("resident1")).thenReturn(Optional.of(account));when(accounts.existsByStudentId(14L)).thenReturn(false);
+    controller.linkStudentAccount(14L,new StudentController.AccountLink("resident1"));
+    assertEquals(14L,account.getStudentId());verify(accounts).save(account);
+    when(accounts.existsByStudentId(14L)).thenReturn(true);
+    ResponseStatusException duplicate=assertThrows(ResponseStatusException.class,()->controller.linkStudentAccount(14L,new StudentController.AccountLink("resident1")));
+    assertEquals(HttpStatus.CONFLICT,duplicate.getStatusCode());
+  }
+
+  @Test void deletingResidentUnlinksAccountAndInvalidatesItsInvites(){
+    StudentRepository students=mock(StudentRepository.class);UserAccountRepository accounts=mock(UserAccountRepository.class);StaffInviteRepository invites=mock(StaffInviteRepository.class);
+    StudentController controller=new StudentController(students,mock(RoomRepository.class),mock(AuditService.class),invites,accounts);
+    UserAccount account=new UserAccount("resident2","resident@example.invalid","hash","STUDENT");account.setStudentId(15L);
+    when(students.existsById(15L)).thenReturn(true);when(accounts.findByStudentId(15L)).thenReturn(Optional.of(account));
+    controller.delete(15L);
+    assertNull(account.getStudentId());verify(accounts).save(account);verify(invites).deleteByStudentId(15L);verify(students).deleteById(15L);
+  }
+
   private Room room(String number,int capacity){Room value=new Room();value.setRoomNumber(number);value.setRoomType("Shared");value.setCapacity(capacity);value.setPrice(java.math.BigDecimal.ZERO);return value;}
   private Student student(Long id,String name){Student value=new Student();value.setId(id);value.setName(name);value.setEmail(name.toLowerCase().replace(' ','_')+"@example.invalid");return value;}
 }

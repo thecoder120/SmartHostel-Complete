@@ -24,7 +24,11 @@ public class StudentController {
   public StudentController(StudentRepository repo, RoomRepository rooms,AuditService audit,StaffInviteRepository invites,UserAccountRepository accounts){this.repo=repo;this.rooms=rooms;this.audit=audit;this.invites=invites;this.accounts=accounts;}
   public StudentController(StudentRepository repo, RoomRepository rooms,AuditService audit,StaffInviteRepository invites){this(repo,rooms,audit,invites,null);}
   public StudentController(StudentRepository repo, RoomRepository rooms,AuditService audit){this(repo,rooms,audit,null,null);}
-  @GetMapping public List<Student> all(){return repo.findAll();}
+  @GetMapping public List<Student> all(){
+    List<Student> students=repo.findAll();
+    if(accounts!=null) students.forEach(student->student.setAccountLinked(accounts.existsByStudentId(student.getId())));
+    return students;
+  }
   @GetMapping("/{id}") public Student one(@PathVariable Long id){return repo.findById(id).orElseThrow(()->new ResponseStatusException(HttpStatus.NOT_FOUND,"Student not found"));}
   @PostMapping @ResponseStatus(HttpStatus.CREATED) @Transactional public Student create(@Valid @RequestBody Student s){
     s.setId(null);
@@ -58,6 +62,7 @@ public class StudentController {
   }
   @PostMapping("/{id}/invite") @Transactional public Map<String,String> createStudentInvite(@PathVariable Long id){
     Student student=one(id);
+    if(accounts!=null&&accounts.existsByStudentId(id)) throw new ResponseStatusException(HttpStatus.CONFLICT,"This resident already has a linked student account");
     byte[] secret=new byte[24];random.nextBytes(secret);String code=Base64.getUrlEncoder().withoutPadding().encodeToString(secret);
     Instant expiresAt=Instant.now().plus(7,ChronoUnit.DAYS);
     if(invites==null) throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,"Student invitations are unavailable");
@@ -87,7 +92,10 @@ public class StudentController {
     if(assigned>=room.getCapacity()) throw new ResponseStatusException(HttpStatus.CONFLICT,"That room is at capacity");
   }
   @DeleteMapping("/{id}") @ResponseStatus(HttpStatus.NO_CONTENT) @Transactional public void delete(@PathVariable Long id){
-    if(!repo.existsById(id)) throw new ResponseStatusException(HttpStatus.NOT_FOUND,"Student not found"); repo.deleteById(id);audit.record("STUDENT_DELETED","STUDENT",id);
+    if(!repo.existsById(id)) throw new ResponseStatusException(HttpStatus.NOT_FOUND,"Student not found");
+    if(accounts!=null) accounts.findByStudentId(id).ifPresent(account->{account.setStudentId(null);accounts.save(account);});
+    if(invites!=null) invites.deleteByStudentId(id);
+    repo.deleteById(id);audit.record("STUDENT_DELETED","STUDENT",id);
   }
   public record RoomAssignment(String roomNumber){}
   public record AccountLink(String username){}
