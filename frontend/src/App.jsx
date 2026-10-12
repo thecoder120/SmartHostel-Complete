@@ -85,7 +85,7 @@ export default function App(){
   </div>;
 }
 
-function Nav({active,icon,label,onClick}){return <button className={active?'nav active':'nav'} onClick={onClick}>{icon}<span>{label}</span></button>}
+function Nav({active,icon,label,onClick}){const accessibleLabel=label.replace(/\s·\s\d+$/,'');return <button className={active?'nav active':'nav'} aria-label={accessibleLabel} title={label} aria-current={active?'page':undefined} onClick={onClick}>{icon}<span>{label}</span></button>}
 function Alert({type,message,onClose}){return <div className={`alert ${type||''}`} role={type==='error'?'alert':'status'}>{message}<button aria-label="Dismiss notification" onClick={onClose}>×</button></div>}
 function Dashboard({students,rooms,busy,occupiedBeds,availableBeds,onAddStudent,onAddRoom}){
  const cards=[[Users,'Total Students',students.length,'Registered residents','purple'],[BedDouble,'Total Rooms',rooms.length,'Rooms in system','blue'],[Building2,'Beds available',availableBeds,'Ready for allocation','green'],[BedDouble,'Beds occupied',occupiedBeds,'Current residents','orange']];
