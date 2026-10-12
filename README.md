@@ -1,0 +1,96 @@
+# Smart Hostel
+
+Includes a React + Vite dashboard and a Spring Boot + MySQL REST API for student and room management.
+
+## Quick start (recommended)
+
+Install and open Docker Desktop, then run the following command from the extracted project folder:
+
+```bash
+./scripts/start-local.sh
+```
+
+The script creates a private `.env` file with random database passwords and a staff invite code, then builds and starts the web app, backend, and MySQL. It prints the invite code once so you can create the first administrator account. Open http://localhost:8080. To stop the app, run `docker compose down`; your records remain in the Docker database volume. Keep the invite code private. This local HTTP setup is for a trusted network; follow the public hosting section before exposing it to the internet.
+
+Windows PowerShell users can open PowerShell in the project folder and run `Copy-Item .env.example .env`, edit `.env` to replace `DB_PASSWORD`, `MYSQL_ROOT_PASSWORD`, and `STAFF_INVITE_CODE` with long unique values, then run `docker compose up --build -d`. Docker Desktop must be running.
+
+## Manual local setup
+
+Requirements: Java 21+, Maven 3.9+, Node.js 20+, and MySQL 8+.
+
+1. Create a database and a limited local application user in MySQL:
+   ```sql
+   CREATE DATABASE IF NOT EXISTS smarthostel;
+   CREATE USER 'smarthostel_app'@'localhost' IDENTIFIED BY 'replace-with-a-strong-password';
+   GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, ALTER, INDEX ON smarthostel.* TO 'smarthostel_app'@'localhost';
+   ```
+2. In the terminal where you run Spring Boot, set `DB_USERNAME=smarthostel_app`, `DB_PASSWORD` to the password you chose, and `STAFF_INVITE_CODE` to a unique value. Override `DB_URL` only when your local database uses a different address. These environment variables must be set in the same terminal/process that starts Spring Boot; `.env` is read by Docker Compose but is not automatically loaded by Maven or an IDE.
+3. Terminal 1 (from `backend`):
+   ```bash
+   mvn spring-boot:run
+   ```
+4. Terminal 2 (from `frontend`):
+   ```bash
+   npm install
+   npm run dev
+   ```
+5. Open http://localhost:5173. Vite forwards `/api` requests to the Spring Boot service at `localhost:8080`.
+
+Create a staff account from the sign-in screen. A local development run does not require an invite code; deployments can configure `STAFF_INVITE_CODE` to restrict registration to invited staff. New passwords must be at least 8 characters. Accounts and student/room records are stored by the backend in MySQL; users who sign in to the same deployment work with the same shared records. Passwords are hashed with BCrypt, sessions use server cookies, and state-changing requests require CSRF tokens. Sign out from the top bar when finished.
+
+The first account on a new deployment becomes its administrator. On an existing single-account local workspace, that account is upgraded to administrator on its next sign-in. Administrators can create seven-day, single-use staff invite codes, choose administrator/staff roles, inspect activity history, and issue temporary password resets. Temporary passwords must be changed by the user after sign-in. Staff can change their password from the top bar. The configured `STAFF_INVITE_CODE` bootstraps the first administrator; afterwards administrators should issue single-use invites from **Staff & activity**.
+
+Student records support check-in and check-out. Room capacity is enforced during assignment, with occupied and available beds shown on the dashboard and room list. Checking a resident out releases the bed while keeping the student record and dates. Record changes, sign-ins, invites, and password resets appear in the administrator activity history.
+
+For shared access over the internet, deploy to a Linux server you control with a public IP and a domain name. The Docker setup below places the web app behind Caddy, which requests and renews HTTPS certificates automatically. The API and database stay on the private Docker network. Do not use wildcard CORS or expose a local development server as the shared production site.
+
+### Run one shared server with Docker
+
+Install Docker Desktop on the computer that will host the app. The quick-start script above is the easiest path. To configure it manually, copy `.env.example` to `.env`, replace the database passwords and invite code with strong unique values, then run:
+
+```bash
+docker compose up --build -d
+```
+
+Open `http://localhost:8080` on the host computer. Other people on the same Wi-Fi/network can open `http://<host-computer-ip>:8080`; allow that port through the host firewall. Create staff accounts from the sign-in page. The database persists in a Docker volume. Keep the host computer on while the team is using the app. This LAN setup uses HTTP; use HTTPS before exposing it to the public internet and set `SESSION_COOKIE_SECURE=true`.
+
+### Publish it on the internet
+
+On a Linux server with Docker Compose installed, point your domain's DNS `A` record to the server's public IP and allow inbound ports 80 and 443 in its firewall. Copy `.env.example` to `.env`, set strong unique `DB_PASSWORD`, `MYSQL_ROOT_PASSWORD`, and `STAFF_INVITE_CODE` values, then set:
+
+```dotenv
+WEB_PORT=127.0.0.1:8080
+SESSION_COOKIE_SECURE=true
+CORS_ALLOWED_ORIGINS=https://your-real-domain.example
+HOST_DOMAIN=your-real-domain.example
+```
+
+Start the public HTTPS stack with `docker compose --profile public up --build -d`. Once DNS has propagated and Caddy has obtained the certificate, share `https://your-real-domain.example` with your group. Give staff the invite code out-of-band. Keep `.env` private and back up the `hostel_mysql` volume. The deployment config is ready; publishing still requires your domain and server.
+
+The production reverse proxy limits sign-in and registration attempts and adds browser security headers. The backend and database stay private; only the web proxy publishes ports. Keep the host patched and restrict server access. Email-based verification and self-service recovery are not configured; an administrator can issue a temporary password reset.
+
+### Troubleshooting startup
+
+- **Docker command not found / Docker daemon unavailable:** install Docker Desktop and wait until it says it is running, then retry the quick start.
+- **Compose says a variable is required:** run `./scripts/start-local.sh` to create `.env`, or create `.env` from `.env.example` and replace the placeholder values.
+- **Sign-in page says the service is unavailable:** check `docker compose ps`; wait until `mysql` and `backend` report healthy. View details with `docker compose logs backend mysql`.
+- **Port 8080 is already in use:** change `WEB_PORT` in `.env` to another port, such as `8081`, then restart with `docker compose up --build -d`.
+- **Manual Spring Boot startup fails to connect to MySQL:** verify MySQL is running, the `smarthostel` database and application user exist, and `DB_URL`, `DB_USERNAME`, and `DB_PASSWORD` are set in the same terminal or IDE run configuration.
+- **Maven says there is no POM:** run Maven from the `backend` directory. Run npm commands from `frontend`.
+
+### Database backups
+
+Run `./scripts/backup-mysql.sh` from the project folder on the host. It writes a compressed dump under `backups/` (or `BACKUP_DIR` if set). The archive contains private resident information: encrypt it, restrict access, and copy it to storage separate from the server. Schedule this command with the host scheduler and periodically test restores against a separate database. Restoring replaces database contents; verify the target and keep a current backup first.
+
+### Continuous checks
+
+GitHub Actions runs backend workflow tests and the frontend production build on pushes and pull requests. The backend exposes a minimal health endpoint for container readiness. Request logs contain a generated request ID, method, path, status, and duration; request bodies and passwords are not logged.
+
+Backend endpoints:
+- GET/POST `/api/students`
+- GET/PUT/DELETE `/api/students/{id}`
+- GET/POST `/api/rooms`
+- GET/PUT/DELETE `/api/rooms/{id}`
+- GET `/hello`
+
+The backend updates its schema through JPA. All staff share one hostel workspace; multi-hostel tenancy, email verification, self-service recovery, and payments are not included. Before handling real resident records, document retention and privacy practices for your institution.
