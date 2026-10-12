@@ -50,7 +50,9 @@ public class AuthController {
 
   @GetMapping("/csrf") public Map<String, String> csrf(CsrfToken token) { return Map.of("token", token.getToken()); }
 
-  @GetMapping("/config") public Map<String, Boolean> config() { return Map.of("inviteRequired", false); }
+  @GetMapping("/config") public Map<String, Boolean> config() {
+    return Map.of("inviteRequired", false, "registrationOpen", true);
+  }
 
   @PostMapping("/login")
   public Map<String, String> login(@RequestBody LoginRequest body, HttpServletRequest request, HttpServletResponse response) {
