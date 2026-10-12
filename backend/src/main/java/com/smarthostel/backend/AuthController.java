@@ -79,7 +79,9 @@ public class AuthController {
   public Map<String, String> register(@RequestBody RegisterRequest body, HttpServletRequest request, HttpServletResponse response) {
     String requestedRole=body.role()==null||body.role().isBlank()?"STAFF":body.role().trim().toUpperCase(Locale.ROOT);
     if(!List.of("STAFF","STUDENT").contains(requestedRole)) throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Choose a student or staff account");
-    StaffInvite matchedInvite=requestedRole.equals("STUDENT")?validateStudentInvite(body.inviteCode()):validateInvite(body.inviteCode());
+    StaffInvite matchedInvite=requestedRole.equals("STUDENT")
+        ? (body.inviteCode()==null||body.inviteCode().isBlank()?null:validateStudentInvite(body.inviteCode()))
+        : validateInvite(body.inviteCode());
     if (body.username() == null || !body.username().trim().matches("[A-Za-z0-9._-]{3,40}")) {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Username must be 3–40 characters and use letters, numbers, dot, underscore, or hyphen");
     }
@@ -98,10 +100,12 @@ public class AuthController {
       UserAccount account=new UserAccount(username,email,passwordEncoder.encode(body.password()),requestedRole);
       if(requestedRole.equals("STUDENT")) {
         if(accounts.count()==0) throw new ResponseStatusException(HttpStatus.CONFLICT,"The administrator must finish hostel setup before student accounts can be created");
-        Student student=students.findById(matchedInvite.getStudentId()).orElseThrow(()->new ResponseStatusException(HttpStatus.FORBIDDEN,"That student invitation is no longer valid"));
-        if(!student.getEmail().equalsIgnoreCase(email)) throw new ResponseStatusException(HttpStatus.FORBIDDEN,"Use the email address registered by your hostel staff");
-        if(accounts.existsByStudentId(student.getId())) throw new ResponseStatusException(HttpStatus.CONFLICT,"A student account already exists for this record");
-        account.setStudentId(student.getId());
+        if(matchedInvite!=null) {
+          Student student=students.findById(matchedInvite.getStudentId()).orElseThrow(()->new ResponseStatusException(HttpStatus.FORBIDDEN,"That student invitation is no longer valid"));
+          if(!student.getEmail().equalsIgnoreCase(email)) throw new ResponseStatusException(HttpStatus.FORBIDDEN,"Use the email address registered by your hostel staff");
+          if(accounts.existsByStudentId(student.getId())) throw new ResponseStatusException(HttpStatus.CONFLICT,"A student account already exists for this record");
+          account.setStudentId(student.getId());
+        }
       } else if(accounts.count()==0) {
         account.setRole("ADMIN");
       }
@@ -168,7 +172,6 @@ public class AuthController {
     throw new ResponseStatusException(HttpStatus.FORBIDDEN,"That invite code is not valid or has already been used");
   }
   private StaffInvite validateStudentInvite(String submitted){
-    if(submitted==null||submitted.isBlank()) throw new ResponseStatusException(HttpStatus.FORBIDDEN,"Enter the student invitation code provided by hostel staff");
     StaffInvite invite=invites.lockByCodeHash(hash(submitted)).orElse(null);
     if(invite==null||!invite.isUsable()||invite.getStudentId()==null) throw new ResponseStatusException(HttpStatus.FORBIDDEN,"That student invitation is not valid or has expired");
     return invite;

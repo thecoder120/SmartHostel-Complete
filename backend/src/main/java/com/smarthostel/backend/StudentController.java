@@ -18,10 +18,12 @@ public class StudentController {
   private final RoomRepository rooms;
   private final AuditService audit;
   private final StaffInviteRepository invites;
+  private final UserAccountRepository accounts;
   private final SecureRandom random=new SecureRandom();
   @org.springframework.beans.factory.annotation.Autowired
-  public StudentController(StudentRepository repo, RoomRepository rooms,AuditService audit,StaffInviteRepository invites){this.repo=repo;this.rooms=rooms;this.audit=audit;this.invites=invites;}
-  public StudentController(StudentRepository repo, RoomRepository rooms,AuditService audit){this(repo,rooms,audit,null);}
+  public StudentController(StudentRepository repo, RoomRepository rooms,AuditService audit,StaffInviteRepository invites,UserAccountRepository accounts){this.repo=repo;this.rooms=rooms;this.audit=audit;this.invites=invites;this.accounts=accounts;}
+  public StudentController(StudentRepository repo, RoomRepository rooms,AuditService audit,StaffInviteRepository invites){this(repo,rooms,audit,invites,null);}
+  public StudentController(StudentRepository repo, RoomRepository rooms,AuditService audit){this(repo,rooms,audit,null,null);}
   @GetMapping public List<Student> all(){return repo.findAll();}
   @GetMapping("/{id}") public Student one(@PathVariable Long id){return repo.findById(id).orElseThrow(()->new ResponseStatusException(HttpStatus.NOT_FOUND,"Student not found"));}
   @PostMapping @ResponseStatus(HttpStatus.CREATED) @Transactional public Student create(@Valid @RequestBody Student s){
@@ -63,6 +65,20 @@ public class StudentController {
     audit.record("STUDENT_INVITE_CREATED","STUDENT",id);
     return Map.of("code",code,"expiresAt",expiresAt.toString());
   }
+  @PostMapping("/{id}/link-account") @Transactional
+  @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN')")
+  public Map<String,String> linkStudentAccount(@PathVariable Long id,@RequestBody AccountLink request){
+    Student student=one(id);
+    if(accounts==null) throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,"Account linking is unavailable");
+    if(request==null||request.username()==null||request.username().isBlank()) throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Enter the student's account username");
+    UserAccount account=accounts.findByUsernameIgnoreCase(request.username().trim()).orElseThrow(()->new ResponseStatusException(HttpStatus.NOT_FOUND,"Student account not found"));
+    if(!"STUDENT".equals(account.getRole())) throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Only a student account can be linked to a resident record");
+    if(!account.getEmail().equalsIgnoreCase(student.getEmail())) throw new ResponseStatusException(HttpStatus.FORBIDDEN,"The account email must match the resident record email");
+    if(account.getStudentId()!=null) throw new ResponseStatusException(HttpStatus.CONFLICT,"This account is already linked to a resident record");
+    if(accounts.existsByStudentId(id)) throw new ResponseStatusException(HttpStatus.CONFLICT,"A student account is already linked to this resident record");
+    account.setStudentId(id);accounts.save(account);audit.record("STUDENT_ACCOUNT_LINKED","STUDENT",id);
+    return Map.of("message","Student account linked successfully");
+  }
   private void requireRoom(String roomNumber, Long excludeStudentId){
     if(roomNumber==null)return;
     Room room=rooms.lockByRoomNumberForUpdate(roomNumber).orElseThrow(()->new ResponseStatusException(HttpStatus.BAD_REQUEST,"Selected room does not exist"));
@@ -74,6 +90,7 @@ public class StudentController {
     if(!repo.existsById(id)) throw new ResponseStatusException(HttpStatus.NOT_FOUND,"Student not found"); repo.deleteById(id);audit.record("STUDENT_DELETED","STUDENT",id);
   }
   public record RoomAssignment(String roomNumber){}
+  public record AccountLink(String username){}
   private static String hash(String value){try{return java.util.HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256").digest(value.getBytes(java.nio.charset.StandardCharsets.UTF_8)));}catch(Exception e){throw new IllegalStateException(e);}}
   private static String currentUser(){var auth=org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();return auth==null?"system":auth.getName();}
 }

@@ -30,12 +30,13 @@ public class StudentPortalController {
     UserAccount account = accounts.findByUsernameIgnoreCase(authentication.getName())
         .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED));
     if (account.getStudentId() == null) {
-      throw new ResponseStatusException(HttpStatus.FORBIDDEN, "This student account is not linked to a resident record");
+      return Map.of("linked", false, "message", "Your account is active, but it is not linked to a resident record yet. Ask an administrator to link it using the email on your account.");
     }
     Student student = students.findById(account.getStudentId())
         .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Your resident record is unavailable; contact hostel staff"));
 
     Map<String, Object> profile = new LinkedHashMap<>();
+    profile.put("linked", true);
     profile.put("name", student.getName());
     profile.put("email", student.getEmail());
     profile.put("phone", student.getPhone());
