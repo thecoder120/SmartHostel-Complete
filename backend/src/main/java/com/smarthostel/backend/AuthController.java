@@ -50,7 +50,7 @@ public class AuthController {
 
   @GetMapping("/csrf") public Map<String, String> csrf(CsrfToken token) { return Map.of("token", token.getToken()); }
 
-  @GetMapping("/config") public Map<String, Boolean> config() { return Map.of("inviteRequired", !staffInviteCode.isBlank()); }
+  @GetMapping("/config") public Map<String, Boolean> config() { return Map.of("inviteRequired", false); }
 
   @PostMapping("/login")
   public Map<String, String> login(@RequestBody LoginRequest body, HttpServletRequest request, HttpServletResponse response) {
@@ -132,14 +132,15 @@ public class AuthController {
   }
 
   private StaffInvite validateInvite(String submitted){
-    if(staffInviteCode.isBlank()) return null;
+    if(submitted==null||submitted.isBlank()) return null;
+    if(staffInviteCode.isBlank()) throw new ResponseStatusException(HttpStatus.FORBIDDEN,"That invite code is not valid");
     if(staffInviteCode.length()<16) throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,"Staff registration is not configured securely");
-    if(accounts.count()==0&&submitted!=null&&MessageDigest.isEqual(staffInviteCode.getBytes(StandardCharsets.UTF_8),submitted.getBytes(StandardCharsets.UTF_8))) return null;
-    if(accounts.count()>0&&submitted!=null){
+    if(accounts.count()==0&&MessageDigest.isEqual(staffInviteCode.getBytes(StandardCharsets.UTF_8),submitted.getBytes(StandardCharsets.UTF_8))) return null;
+    if(accounts.count()>0){
       StaffInvite invite=invites.lockByCodeHash(hash(submitted)).orElse(null);
       if(invite!=null&&invite.isUsable()) return invite;
     }
-    throw new ResponseStatusException(HttpStatus.FORBIDDEN,accounts.count()==0?"Enter the administrator setup invite code":"Ask an administrator for a one-time staff invite code");
+    throw new ResponseStatusException(HttpStatus.FORBIDDEN,"That invite code is not valid or has already been used");
   }
   private static String hash(String value){
     try{return java.util.HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(value.getBytes(StandardCharsets.UTF_8)));}
